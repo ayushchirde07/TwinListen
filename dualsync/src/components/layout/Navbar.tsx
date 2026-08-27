@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { Headphones, Menu, X } from 'lucide-react'
+import { ModeToggle } from '@/components/mode-toggle'
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -17,10 +18,11 @@ export default function Navbar() {
             </Link>
           </div>
           <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
+            <div className="ml-10 flex items-center space-x-4">
               <Link href="/sync" className="hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">Sync Mode</Link>
               <Link href="/one-phone" className="hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">One Phone Mode</Link>
               <Link href="/about" className="hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">About</Link>
+              <ModeToggle />
             </div>
           </div>
           <div className="-mr-2 flex md:hidden">
@@ -44,6 +46,9 @@ export default function Navbar() {
             <Link href="/sync" className="hover:text-primary block px-3 py-2 rounded-md text-base font-medium">Sync Mode</Link>
             <Link href="/one-phone" className="hover:text-primary block px-3 py-2 rounded-md text-base font-medium">One Phone Mode</Link>
             <Link href="/about" className="hover:text-primary block px-3 py-2 rounded-md text-base font-medium">About</Link>
+            <div className="px-3 py-2">
+              <ModeToggle />
+            </div>
           </div>
         </div>
       )}
