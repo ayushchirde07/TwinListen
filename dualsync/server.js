@@ -82,6 +82,11 @@ app.prepare().then(() => {
       socket.to(roomCode).emit("queue-index", index);
     });
 
+    // Chat message — broadcast to entire room including sender
+    socket.on("chat-message", ({ roomCode, message }) => {
+      io.to(roomCode).emit("chat-message", message);
+    });
+
     socket.on("disconnecting", () => {
       socket.rooms.forEach((room) => {
         if (room !== socket.id) {

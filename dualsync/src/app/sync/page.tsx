@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   Users, Plus, LogIn, Play, Pause, SkipBack, SkipForward,
   Music, Copy, Upload, Link, RefreshCw, CheckCircle, AlertCircle,
-  Volume2, ListMusic, Trash2, ChevronRight, X
+  Volume2, ListMusic, X, MessageSquare, Send
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,14 @@ interface QueueItem {
   id: string
   name: string
   url: string
+}
+
+interface ChatMessage {
+  id: string
+  userId: string
+  text: string
+  time: string
+  isSelf?: boolean
 }
 
 function generateCode() {
@@ -59,8 +67,15 @@ export default function SyncRoom() {
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [showQueue, setShowQueue] = useState(false)
 
+  // ── Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState("")
+  const [chatOpen, setChatOpen] = useState(false)
+  const [unread, setUnread] = useState(0)
+
   const audioRef = useRef<HTMLAudioElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   // ── Broadcast queue to all listeners (host only)
   const broadcastQueue = useCallback((q: QueueItem[], idx: number) => {
@@ -157,14 +172,48 @@ export default function SyncRoom() {
       // Listener tracks which queue index the host is on
       socket.on("queue-index", (idx: number) => setCurrentIndex(idx))
 
+      // Chat messages — received by everyone including sender
+      socket.on("chat-message", (msg: ChatMessage) => {
+        setMessages((prev) => [...prev, msg])
+        // If chat is closed, increment unread
+        setChatOpen((open) => {
+          if (!open) setUnread((n) => n + 1)
+          return open
+        })
+      })
+
       return () => {
         socket.off("room-users"); socket.off("user-joined"); socket.off("user-left")
         socket.off("play-audio"); socket.off("pause-audio"); socket.off("sync-time")
         socket.off("set-audio-url"); socket.off("queue-update"); socket.off("queue-index")
+        socket.off("chat-message")
         socket.disconnect()
       }
     }
   }, [step, roomCode])
+
+  // ── Auto-scroll chat to bottom when new message arrives
+  useEffect(() => {
+    if (chatOpen) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      setUnread(0)
+    }
+  }, [messages, chatOpen])
+
+  // ── Send a chat message
+  const sendMessage = () => {
+    const text = chatInput.trim()
+    if (!text) return
+    const msg: ChatMessage = {
+      id: Math.random().toString(36).substring(2),
+      userId: socket.id ?? "me",
+      text,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      isSelf: true,
+    }
+    socket.emit("chat-message", { roomCode, message: msg })
+    setChatInput("")
+  }
 
   // ── Room creation animation
   const checkAndCreateRoom = () => {
@@ -578,15 +627,114 @@ export default function SyncRoom() {
               </CardContent>
             </Card>
 
+            {/* Chat */}
+            <Card className="overflow-hidden">
+              {/* Chat header — click to toggle */}
+              <button
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
+                onClick={() => { setChatOpen((o) => !o); setUnread(0) }}
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  Room Chat
+                  {unread > 0 && (
+                    <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center animate-bounce">
+                      {unread}
+                    </span>
+                  )}
+                </span>
+                <motion.span animate={{ rotate: chatOpen ? 180 : 0 }} transition={{ duration: 0.2 }}
+                  className="text-muted-foreground text-xs">▲</motion.span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {chatOpen && (
+                  <motion.div
+                    key="chat-body"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    {/* Message list */}
+                    <div className="h-56 overflow-y-auto px-3 py-2 space-y-3 border-t border-border bg-secondary/20">
+                      {messages.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
+                          <MessageSquare className="h-8 w-8 opacity-30" />
+                          <p className="text-xs">No messages yet. Say hi! 👋</p>
+                        </div>
+                      ) : (
+                        messages.map((msg) => {
+                          const isSelf = msg.userId === socket.id || msg.isSelf
+                          // Deterministic avatar color from userId
+                          const colors = ["bg-violet-500","bg-blue-500","bg-pink-500","bg-emerald-500","bg-orange-500","bg-cyan-500"]
+                          const colorIdx = msg.userId.charCodeAt(0) % colors.length
+                          return (
+                            <motion.div
+                              key={msg.id}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={`flex gap-2 ${isSelf ? "flex-row-reverse" : "flex-row"}`}
+                            >
+                              {/* Avatar */}
+                              <div className={`h-6 w-6 rounded-full shrink-0 ${colors[colorIdx]} flex items-center justify-center text-white text-[10px] font-bold`}>
+                                {msg.userId.substring(0, 2).toUpperCase()}
+                              </div>
+                              {/* Bubble */}
+                              <div className={`max-w-[75%] ${isSelf ? "items-end" : "items-start"} flex flex-col gap-0.5`}>
+                                <div className={`px-3 py-1.5 rounded-2xl text-sm leading-snug break-words ${isSelf ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-secondary text-foreground rounded-tl-sm"}`}>
+                                  {msg.text}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground px-1">{msg.time}</span>
+                              </div>
+                            </motion.div>
+                          )
+                        })
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+
+                    {/* Input row */}
+                    <div className="flex gap-2 p-3 border-t border-border">
+                      <Input
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+                        placeholder="Say something…"
+                        className="text-sm h-8"
+                        maxLength={300}
+                      />
+                      <Button size="icon" className="h-8 w-8 shrink-0" onClick={sendMessage} disabled={!chatInput.trim()}>
+                        <Send className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Card>
+
             {/* Leave */}
             <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-              onClick={() => { setStep("lobby"); audioRef.current?.pause(); setAudioSrc(""); setSongName("No Song Selected"); setQueue([]); setCurrentIndex(-1); toast("Left the room", { description: "See you next time! 👋", duration: 3000 }) }}>
+              onClick={() => {
+                setStep("lobby")
+                audioRef.current?.pause()
+                setAudioSrc("")
+                setSongName("No Song Selected")
+                setQueue([])
+                setCurrentIndex(-1)
+                setMessages([])
+                setChatOpen(false)
+                setUnread(0)
+                toast("Left the room", { description: "See you next time! 👋", duration: 3000 })
+              }}>
               Leave Room
             </Button>
           </div>
         </div>
       </div>
     )
+
   }
 
   // ──────────────────────────────────────────────────────────────────
