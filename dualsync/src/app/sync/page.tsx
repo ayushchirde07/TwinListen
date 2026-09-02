@@ -298,27 +298,50 @@ export default function SyncRoom() {
           <div className="md:col-span-2 space-y-6">
             <Card className="border-primary/20 overflow-hidden">
               {/* Album art area */}
-              <div className="h-48 bg-gradient-to-br from-primary/20 to-purple-900/40 flex items-center justify-center relative group">
-                {isPlaying ? (
-                  <motion.div
-                    animate={{ scale: [1, 1.08, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    <Music className="h-20 w-20 text-primary/70" />
-                  </motion.div>
-                ) : (
-                  <Music className="h-20 w-20 text-primary/30" />
-                )}
-              </div>
+              {uploading ? (
+                <div className="h-48 bg-secondary animate-pulse flex items-center justify-center relative">
+                  {/* shimmer sweep */}
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.4s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  <div className="flex flex-col items-center gap-3 z-10">
+                    <div className="h-16 w-16 rounded-full bg-muted-foreground/20 animate-pulse" />
+                    <div className="h-2 w-32 rounded-full bg-muted-foreground/20 animate-pulse" />
+                  </div>
+                </div>
+              ) : (
+                <div className="h-48 bg-gradient-to-br from-primary/20 to-purple-900/40 flex items-center justify-center relative group">
+                  {isPlaying ? (
+                    <motion.div
+                      animate={{ scale: [1, 1.08, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      <Music className="h-20 w-20 text-primary/70" />
+                    </motion.div>
+                  ) : (
+                    <Music className="h-20 w-20 text-primary/30" />
+                  )}
+                </div>
+              )}
 
               <CardContent className="pt-6 space-y-6">
                 {/* Song name */}
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold truncate">{songName}</h2>
-                  <p className="text-muted-foreground text-sm mt-1">
-                    {audioSrc ? "Ready to play" : "No song loaded — upload or paste a URL below"}
-                  </p>
-                </div>
+                {uploading ? (
+                  <div className="text-center space-y-3">
+                    <div className="h-7 w-48 rounded-lg bg-muted animate-pulse mx-auto" />
+                    <div className="h-4 w-32 rounded-lg bg-muted animate-pulse mx-auto" />
+                    {/* Upload progress hint */}
+                    <div className="flex items-center justify-center gap-2 text-xs text-primary/70 font-medium mt-1">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Uploading & sharing with room…
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold truncate">{songName}</h2>
+                    <p className="text-muted-foreground text-sm mt-1">
+                      {audioSrc ? "Ready to play" : "No song loaded — upload or paste a URL below"}
+                    </p>
+                  </div>
+                )}
 
                 {/* Hidden audio element */}
                 <audio
@@ -330,34 +353,52 @@ export default function SyncRoom() {
 
                 {/* Seek bar */}
                 <div className="space-y-1">
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-                    <span>{formatTime(progress)}</span>
-                    <input
-                      type="range" min="0" max={duration || 100} value={progress}
-                      onChange={handleSeek}
-                      className="flex-grow h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                    />
-                    <span>{formatTime(duration)}</span>
-                  </div>
+                  {uploading ? (
+                    <div className="space-y-2">
+                      <div className="h-2 w-full rounded-full bg-muted animate-pulse" />
+                      <div className="flex justify-between">
+                        <div className="h-3 w-8 rounded bg-muted animate-pulse" />
+                        <div className="h-3 w-8 rounded bg-muted animate-pulse" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
+                      <span>{formatTime(progress)}</span>
+                      <input
+                        type="range" min="0" max={duration || 100} value={progress}
+                        onChange={handleSeek}
+                        className="flex-grow h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Controls */}
-                <div className="flex items-center justify-center gap-6">
-                  <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full hover:bg-primary/10">
-                    <SkipBack className="h-6 w-6" />
-                  </Button>
-                  <Button
-                    onClick={togglePlay}
-                    size="icon"
-                    disabled={!audioSrc}
-                    className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-transform hover:scale-105 disabled:opacity-40"
-                  >
-                    {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full hover:bg-primary/10">
-                    <SkipForward className="h-6 w-6" />
-                  </Button>
-                </div>
+                {uploading ? (
+                  <div className="flex items-center justify-center gap-6">
+                    <div className="h-12 w-12 rounded-full bg-muted animate-pulse" />
+                    <div className="h-16 w-16 rounded-full bg-muted animate-pulse" />
+                    <div className="h-12 w-12 rounded-full bg-muted animate-pulse" />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-6">
+                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full hover:bg-primary/10">
+                      <SkipBack className="h-6 w-6" />
+                    </Button>
+                    <Button
+                      onClick={togglePlay}
+                      size="icon"
+                      disabled={!audioSrc}
+                      className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-transform hover:scale-105 disabled:opacity-40"
+                    >
+                      {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full hover:bg-primary/10">
+                      <SkipForward className="h-6 w-6" />
+                    </Button>
+                  </div>
+                )}
 
                 {/* Volume */}
                 <div className="flex items-center gap-3 max-w-xs mx-auto">
