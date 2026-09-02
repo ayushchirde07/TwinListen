@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { socket } from "@/lib/socket"
+import { toast } from "sonner"
 
 type Mode = "none" | "url" | "upload"
 
@@ -50,9 +51,29 @@ export default function SyncRoom() {
       socket.connect()
       socket.emit("join-room", roomCode)
 
-      socket.on("room-users", (clients: string[]) => setUsers(clients))
-      socket.on("user-joined", (id: string) => setUsers((prev) => [...prev, id]))
-      socket.on("user-left", (id: string) => setUsers((prev) => prev.filter((u) => u !== id)))
+      socket.on("room-users", (clients: string[]) => {
+        setUsers(clients)
+        toast.success(`Joined room ${roomCode}!`, {
+          description: `${clients.length} listener${clients.length !== 1 ? "s" : ""} in the room`,
+          icon: "🎵",
+        })
+      })
+
+      socket.on("user-joined", (id: string) => {
+        setUsers((prev) => [...prev, id])
+        toast("A friend joined the room! 🎉", {
+          description: `User ${id.substring(0, 4)} connected`,
+          duration: 4000,
+        })
+      })
+
+      socket.on("user-left", (id: string) => {
+        setUsers((prev) => prev.filter((u) => u !== id))
+        toast("A listener left the room", {
+          description: `User ${id.substring(0, 4)} disconnected`,
+          duration: 3000,
+        })
+      })
 
       socket.on("play-audio", () => {
         setIsPlaying(true)
@@ -80,6 +101,11 @@ export default function SyncRoom() {
           audioRef.current.pause()
           audioRef.current.load()
         }
+        toast.success("Host loaded a new song!", {
+          description: name,
+          icon: "🎵",
+          duration: 4000,
+        })
       })
 
       return () => {
@@ -203,6 +229,8 @@ export default function SyncRoom() {
     setUploading(true)
     setInputMode("none")
 
+    const uploadToast = toast.loading(`Uploading "${name}"…`, { description: "Sharing with all listeners" })
+
     // Upload to server so all room members can access it
     try {
       const formData = new FormData()
@@ -218,10 +246,20 @@ export default function SyncRoom() {
         setAudioSrc(data.url)
         setSongName(data.name)
         // Server already broadcast set-audio-url to all other room members
+        toast.success("Song uploaded!", {
+          id: uploadToast,
+          description: `"${data.name}" is now playing for everyone`,
+          icon: "🎵",
+          duration: 4000,
+        })
       }
     } catch (err) {
       console.error("Upload failed:", err)
       setSongName(name) // fallback to local name
+      toast.error("Upload failed", {
+        id: uploadToast,
+        description: "Could not share the song. Try again.",
+      })
     } finally {
       setUploading(false)
     }
@@ -237,6 +275,11 @@ export default function SyncRoom() {
     socket.emit("set-audio-url", { roomCode, url: urlInput.trim(), name })
     setUrlInput("")
     setInputMode("none")
+    toast.success("Song loaded!", {
+      description: `"${name}" shared with all listeners`,
+      icon: "🔗",
+      duration: 3000,
+    })
   }
 
   const formatTime = (time: number) => {
@@ -398,7 +441,18 @@ export default function SyncRoom() {
               <CardContent>
                 <div className="flex items-center justify-between p-3 bg-secondary rounded-lg border border-border">
                   <span className="font-mono text-2xl font-bold tracking-widest text-primary">{roomCode}</span>
-                  <Button variant="ghost" size="icon" onClick={() => navigator.clipboard.writeText(roomCode)} title="Copy Code">
+                  <Button
+                    variant="ghost" size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(roomCode)
+                      toast.success("Code copied!", {
+                        description: `Room code "${roomCode}" is in your clipboard`,
+                        icon: "📋",
+                        duration: 2500,
+                      })
+                    }}
+                    title="Copy Code"
+                  >
                     <Copy className="h-5 w-5" />
                   </Button>
                 </div>
@@ -431,7 +485,13 @@ export default function SyncRoom() {
             <Button
               variant="outline"
               className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-              onClick={() => { setStep("lobby"); audioRef.current?.pause(); setAudioSrc(""); setSongName("No Song Selected") }}
+              onClick={() => {
+                setStep("lobby")
+                audioRef.current?.pause()
+                setAudioSrc("")
+                setSongName("No Song Selected")
+                toast("Left the room", { description: "See you next time! 👋", duration: 3000 })
+              }}
             >
               Leave Room
             </Button>
