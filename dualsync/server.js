@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const next = require("next");
 const { Server } = require("socket.io");
 const { createServer } = require("http");
@@ -33,20 +33,12 @@ app.prepare().then(() => {
   // Parse body for multer
   server.use(express.json());
 
-  // Audio upload route
+  // Audio upload route — stores file and returns URL; client handles queue/broadcast
   server.post("/upload-audio", upload.single("audio"), (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-
-    const roomCode = req.body.roomCode;
     const fileName = req.file.filename;
     const songName = req.body.songName || req.file.originalname.replace(/\.[^/.]+$/, "");
     const audioUrl = `/audio/${fileName}`;
-
-    // Notify all clients in the room about the new audio
-    if (roomCode) {
-      io.to(roomCode).emit("set-audio-url", { url: audioUrl, name: songName });
-    }
-
     res.json({ url: audioUrl, name: songName });
   });
 
@@ -77,6 +69,17 @@ app.prepare().then(() => {
     // Broadcast a URL-based audio source (for Paste URL mode)
     socket.on("set-audio-url", ({ roomCode, url, name }) => {
       socket.to(roomCode).emit("set-audio-url", { url, name });
+    });
+
+    // Host broadcasts full queue to all listeners
+    socket.on("queue-update", ({ roomCode, queue, currentIndex }) => {
+      socket.to(roomCode).emit("queue-update", { queue, currentIndex });
+    });
+
+    // Host plays a specific song from queue (broadcasts to listeners)
+    socket.on("play-queue-item", ({ roomCode, url, name, index }) => {
+      socket.to(roomCode).emit("set-audio-url", { url, name });
+      socket.to(roomCode).emit("queue-index", index);
     });
 
     socket.on("disconnecting", () => {
