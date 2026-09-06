@@ -181,8 +181,8 @@ export default function TransmittersPage() {
             transition={{ delay: 0.2 }}
             className="text-lg text-muted-foreground max-w-2xl mx-auto"
           >
-            We've tested and researched the best Dual Bluetooth Transmitters so
-            you don't have to. Every product below supports connecting two
+            We&apos;ve tested and researched the best Dual Bluetooth Transmitters so
+            you don&apos;t have to. Every product below supports connecting two
             Bluetooth headphones at once.
           </motion.p>
         </div>
