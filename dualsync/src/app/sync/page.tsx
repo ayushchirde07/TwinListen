@@ -65,7 +65,6 @@ export default function SyncRoom() {
   // ── Queue state
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(-1)
-  const [showQueue, setShowQueue] = useState(false)
 
   // ── Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([])
