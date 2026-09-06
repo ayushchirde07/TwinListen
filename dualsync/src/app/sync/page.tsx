@@ -291,16 +291,19 @@ export default function SyncRoom() {
     try {
       const formData = new FormData()
       formData.append("audio", file); formData.append("roomCode", roomCode); formData.append("songName", name)
-      const res = await fetch("/upload-audio", { method: "POST", body: formData })
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+      const res = await fetch(`${backendUrl}/upload-audio`, { method: "POST", body: formData })
       const data = await res.json()
       if (data.url) {
-        const newItem: QueueItem = { id: generateId(), name: data.name, url: data.url }
+        // Make absolute — Render returns "/audio/..." but listeners need the full URL
+        const absoluteUrl = `${backendUrl}${data.url}`
+        const newItem: QueueItem = { id: generateId(), name: data.name, url: absoluteUrl }
         setQueue((prev) => {
           const updated = [...prev, newItem]
           // If queue was empty, play immediately
           if (prev.length === 0) {
-            setAudioSrc(data.url); setSongName(data.name); setCurrentIndex(0); setProgress(0)
-            socket.emit("set-audio-url", { roomCode, url: data.url, name: data.name })
+            setAudioSrc(absoluteUrl); setSongName(data.name); setCurrentIndex(0); setProgress(0)
+            socket.emit("set-audio-url", { roomCode, url: absoluteUrl, name: data.name })
             broadcastQueue(updated, 0)
           } else {
             broadcastQueue(updated, currentIndex)

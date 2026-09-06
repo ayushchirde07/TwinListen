@@ -1,0 +1,16 @@
+{
+  "name": "dualsync-backend",
+  "version": "1.0.0",
+  "description": "DualSync real-time backend — Express + Socket.io + Multer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "multer": "^2.3.0",
+    "socket.io": "^4.8.3"
+  }
+}
