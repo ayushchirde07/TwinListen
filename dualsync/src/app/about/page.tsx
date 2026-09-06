@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import Link from "next/link"
 import {
   Wifi, Bluetooth, Zap, Globe, Lock, Heart,
-  ArrowRight, Code2, Server, Layers
+  ArrowRight, Code2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -42,7 +42,7 @@ const missions = [
   {
     icon: <Globe className="h-6 w-6 text-primary" />,
     title: "Works Everywhere",
-    desc: "Any device, any browser, any song. Whether you're on a flight or across the world, DualSync has you covered.",
+    desc: "Any device, any browser, any song. Whether you&apos;re on a flight or across the world, DualSync has you covered.",
   },
 ]
 
@@ -100,9 +100,9 @@ export default function AboutPage() {
                     </p>
                     <p>
                       We built two solutions: a <strong className="text-foreground">real-time sync engine</strong> for when
-                      you're apart — using WebSockets so every play, pause, and seek is
+                      you&apos;re apart — using WebSockets so every play, pause, and seek is
                       broadcast instantly to everyone in the room — and a <strong className="text-foreground">hardware guide</strong> for
-                      when you're together, using a dual Bluetooth transmitter to share
+                      when you&apos;re together, using a dual Bluetooth transmitter to share
                       audio from a single phone with zero lag.
                     </p>
                     <p className="flex items-center gap-2 text-primary font-medium">
