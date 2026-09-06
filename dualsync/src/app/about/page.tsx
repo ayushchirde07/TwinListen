@@ -4,8 +4,7 @@ import React from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import {
-  Wifi, Bluetooth, Zap, Globe, Lock, Heart,
-  ArrowRight, Code2, Server, Layers, Palette
+  Zap, Globe, Heart, Lock, Wifi, Bluetooth, ArrowRight, Code2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
