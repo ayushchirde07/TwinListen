@@ -203,7 +203,7 @@ export default function OnePhonePage() {
           <motion.div {...fadeUp} className="text-center mb-12 space-y-3">
             <h2 className="text-3xl font-bold tracking-tight">How to Set It Up</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Follow these four simple steps and you'll be sharing audio in under 5 minutes.
+              Follow these four simple steps and you&apos;ll be sharing audio in under 5 minutes.
             </p>
           </motion.div>
 

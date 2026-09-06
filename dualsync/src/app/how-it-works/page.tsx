@@ -148,7 +148,7 @@ export default function HowItWorksPage() {
                     <div className="h-16 w-12 rounded-xl border-2 border-primary bg-primary/10 flex items-center justify-center">
                       <Smartphone className="h-7 w-7 text-primary" />
                     </div>
-                    <span className="text-xs font-medium">Host's Phone</span>
+                    <span className="text-xs font-medium">Host&apos;s Phone</span>
                     <span className="text-xs text-muted-foreground">Plays & controls</span>
                   </div>
                   <div className="flex items-center gap-1 text-primary/40">

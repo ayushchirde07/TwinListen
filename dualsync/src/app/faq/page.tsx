@@ -32,7 +32,7 @@ const faqs = [
       },
       {
         q: "Do I need to install anything?",
-        a: "No installation required. DualSync runs entirely in your browser. Just visit the website and you're ready to go.",
+        a: "No installation required. DualSync runs entirely in your browser. Just visit the website and you&apos;re ready to go.",
       },
     ],
   },
@@ -68,7 +68,7 @@ const faqs = [
     items: [
       {
         q: "What is a Bluetooth transmitter?",
-        a: "It is a small device (typically $20–$65) that plugs into your phone's headphone jack or USB-C port and wirelessly broadcasts audio to two Bluetooth headphones simultaneously.",
+        a: "It is a small device (typically $20–$65) that plugs into your phone&apos;s headphone jack or USB-C port and wirelessly broadcasts audio to two Bluetooth headphones simultaneously.",
       },
       {
         q: "Will there be audio lag between the two headphones?",
@@ -79,7 +79,7 @@ const faqs = [
         a: "Any standard Bluetooth headphones work. The transmitter handles the wireless broadcasting, so your headphones just need to support Bluetooth 4.0 or higher.",
       },
       {
-        q: "What if my phone doesn't have a headphone jack?",
+        q: "What if my phone doesn&apos;t have a headphone jack?",
         a: "No problem! Many transmitters connect via USB-C instead of a 3.5mm jack. Check our Transmitters page for USB-C compatible options.",
       },
     ],
@@ -171,7 +171,7 @@ export default function FAQPage() {
             transition={{ delay: 0.2 }}
             className="text-xl text-muted-foreground"
           >
-            Everything you need to know about DualSync. Can't find an answer? Check out our guides.
+            Everything you need to know about DualSync. Can&apos;t find an answer? Check out our guides.
           </motion.p>
         </div>
       </section>
