@@ -320,24 +320,65 @@ export default function SyncRoom() {
     }
   }
 
+  // ── YouTube URL detection
+  const isYouTubeUrl = (url: string) =>
+    /^(https?:\/\/)?(www\.)?(youtube\.com\/watch|youtu\.be\/)/.test(url)
+
   // ── Add URL to queue
-  const handleUrlSet = () => {
+  const handleUrlSet = async () => {
     if (!urlInput.trim()) return
-    const name = urlInput.split("/").pop()?.split("?")[0] || "Track"
-    const newItem: QueueItem = { id: generateId(), name, url: urlInput.trim() }
-    setQueue((prev) => {
-      const updated = [...prev, newItem]
-      if (prev.length === 0) {
-        setAudioSrc(urlInput.trim()); setSongName(name); setCurrentIndex(0); setProgress(0)
-        socket.emit("set-audio-url", { roomCode, url: urlInput.trim(), name })
-        broadcastQueue(updated, 0)
-      } else {
-        broadcastQueue(updated, currentIndex)
+    const raw = urlInput.trim()
+
+    if (isYouTubeUrl(raw)) {
+      // ── YouTube URL — fetch title then use stream endpoint
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+      const loadingToast = toast.loading("Fetching YouTube audio…", { icon: "🎵" })
+      try {
+        const res = await fetch(`${backendUrl}/youtube-info?url=${encodeURIComponent(raw)}`)
+        const data = await res.json()
+        if (data.error) throw new Error(data.error)
+
+        const streamUrl = `${backendUrl}/youtube-stream?url=${encodeURIComponent(raw)}`
+        const name = data.title || "YouTube Track"
+        const newItem: QueueItem = { id: generateId(), name, url: streamUrl }
+
+        setQueue((prev) => {
+          const updated = [...prev, newItem]
+          if (prev.length === 0) {
+            setAudioSrc(streamUrl); setSongName(name); setCurrentIndex(0); setProgress(0)
+            socket.emit("set-audio-url", { roomCode, url: streamUrl, name })
+            broadcastQueue(updated, 0)
+          } else {
+            broadcastQueue(updated, currentIndex)
+          }
+          return updated
+        })
+        toast.success("Added to queue!", { id: loadingToast, description: name, icon: "🎵", duration: 3000 })
+      } catch (err) {
+        console.error("YouTube error:", err)
+        toast.error("Could not load YouTube video", {
+          id: loadingToast,
+          description: "Make sure the video is public and not age-restricted",
+        })
       }
-      return updated
-    })
+    } else {
+      // ── Regular URL
+      const name = raw.split("/").pop()?.split("?")[0] || "Track"
+      const newItem: QueueItem = { id: generateId(), name, url: raw }
+      setQueue((prev) => {
+        const updated = [...prev, newItem]
+        if (prev.length === 0) {
+          setAudioSrc(raw); setSongName(name); setCurrentIndex(0); setProgress(0)
+          socket.emit("set-audio-url", { roomCode, url: raw, name })
+          broadcastQueue(updated, 0)
+        } else {
+          broadcastQueue(updated, currentIndex)
+        }
+        return updated
+      })
+      toast.success("Added to queue!", { description: name, icon: "🔗", duration: 3000 })
+    }
     setUrlInput(""); setInputMode("none")
-    toast.success("Added to queue!", { description: name, icon: "🔗", duration: 3000 })
   }
 
   // ── Remove from queue
@@ -494,7 +535,7 @@ export default function SyncRoom() {
                       {inputMode === "url" && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex gap-2">
                           <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
-                            placeholder="https://example.com/song.mp3" className="flex-grow text-sm"
+                            placeholder="YouTube URL or https://example.com/song.mp3" className="flex-grow text-sm"
                             onKeyDown={(e) => e.key === "Enter" && handleUrlSet()} />
                           <Button size="sm" onClick={handleUrlSet} disabled={!urlInput.trim()}>Add</Button>
                         </motion.div>

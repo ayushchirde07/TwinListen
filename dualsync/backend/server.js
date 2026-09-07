@@ -5,6 +5,7 @@ const multer = require("multer");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const ytdl = require("@distube/ytdl-core");
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
@@ -65,7 +66,56 @@ app.post("/upload-audio", upload.single("audio"), (req, res) => {
   res.json({ url: audioUrl, name: songName });
 });
 
-// ── Socket.io ─────────────────────────────────────────────────────────────────
+// ── YouTube endpoints ─────────────────────────────────────────────────────────
+// Returns video title for a YouTube URL
+app.get("/youtube-info", async (req, res) => {
+  try {
+    const url = decodeURIComponent(req.query.url || "");
+    if (!ytdl.validateURL(url)) {
+      return res.status(400).json({ error: "Invalid YouTube URL" });
+    }
+    const info = await ytdl.getInfo(url);
+    res.json({ title: info.videoDetails.title });
+  } catch (err) {
+    console.error("YouTube info error:", err.message);
+    res.status(500).json({ error: "Could not fetch YouTube info. The video may be private or age-restricted." });
+  }
+});
+
+// Streams YouTube audio — supports Range requests so seeking works
+app.get("/youtube-stream", async (req, res) => {
+  try {
+    const url = decodeURIComponent(req.query.url || "");
+    if (!ytdl.validateURL(url)) {
+      return res.status(400).json({ error: "Invalid YouTube URL" });
+    }
+    const info = await ytdl.getInfo(url);
+    const format = ytdl.chooseFormat(info.formats, {
+      filter: "audioonly",
+      quality: "highestaudio",
+    });
+
+    // Proxy YouTube CDN with Range support so the seek bar works
+    const fetchHeaders = { "User-Agent": "Mozilla/5.0" };
+    if (req.headers.range) fetchHeaders["Range"] = req.headers.range;
+
+    const ytRes = await fetch(format.url, { headers: fetchHeaders });
+    res.status(ytRes.status);
+    res.setHeader("Content-Type", format.mimeType || "audio/webm");
+    res.setHeader("Accept-Ranges", "bytes");
+    if (ytRes.headers.get("content-length"))
+      res.setHeader("Content-Length", ytRes.headers.get("content-length"));
+    if (ytRes.headers.get("content-range"))
+      res.setHeader("Content-Range", ytRes.headers.get("content-range"));
+
+    ytRes.body.pipe(res);
+  } catch (err) {
+    console.error("YouTube stream error:", err.message);
+    if (!res.headersSent) res.status(500).end();
+  }
+});
+
+
 const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
