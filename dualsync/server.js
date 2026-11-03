@@ -23,7 +23,7 @@ const storage = multer.diskStorage({
     cb(null, name);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } }); // 50 MB max
+const upload = multer({ storage, limits: { fileSize: 300 * 1024 * 1024 } }); // 300 MB max
 
 app.prepare().then(() => {
   const server = express();
