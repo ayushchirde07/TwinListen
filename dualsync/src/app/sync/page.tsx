@@ -5,13 +5,18 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   Users, Plus, LogIn, Play, Pause, SkipBack, SkipForward,
   Music, Copy, Upload, Link, RefreshCw, CheckCircle, AlertCircle,
-  Volume2, ListMusic, X, MessageSquare, Send
+  Volume2, ListMusic, X, MessageSquare, Send,
+  Download, HardDrive, Shield, ToggleLeft, ToggleRight, Clock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { socket } from "@/lib/socket"
 import { toast } from "sonner"
+import { useDownloadManager } from "@/hooks/useDownloadManager"
+import { DownloadButton } from "@/components/DownloadButton"
+import { OfflineLibraryPanel } from "@/components/OfflineLibraryPanel"
+import { DownloadHistoryPanel } from "@/components/DownloadHistoryPanel"
 
 type Mode = "none" | "url" | "upload"
 
@@ -71,6 +76,11 @@ export default function SyncRoom() {
   const [chatInput, setChatInput] = useState("")
   const [chatOpen, setChatOpen] = useState(false)
   const [unread, setUnread] = useState(0)
+
+  // ── Download state
+  const [downloadAllowed, setDownloadAllowed] = useState(true)
+  const [libraryRefreshKey, setLibraryRefreshKey] = useState(0)
+  const { downloads, downloadTrack, downloadAll, resetTrack } = useDownloadManager()
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -181,11 +191,21 @@ export default function SyncRoom() {
         })
       })
 
+      // Download permission — host broadcasts to members
+      socket.on("download-permission", ({ allowed }: { allowed: boolean }) => {
+        setDownloadAllowed(allowed)
+        if (allowed) {
+          toast.success("Downloads enabled!", { description: "The host has allowed audio downloads.", icon: "⬇️", duration: 4000 })
+        } else {
+          toast("Downloads disabled", { description: "The host has turned off downloads for this room.", icon: "🔒", duration: 4000 })
+        }
+      })
+
       return () => {
         socket.off("room-users"); socket.off("user-joined"); socket.off("user-left")
         socket.off("play-audio"); socket.off("pause-audio"); socket.off("sync-time")
         socket.off("set-audio-url"); socket.off("queue-update"); socket.off("queue-index")
-        socket.off("chat-message")
+        socket.off("chat-message"); socket.off("download-permission")
         socket.disconnect()
       }
     }
@@ -394,6 +414,27 @@ export default function SyncRoom() {
     })
   }
 
+  // ── Download a single track and refresh the library panel
+  const handleDownloadTrack = async (item: { id: string; name: string; url: string }) => {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+    // Build the download URL through the proxy so we get correct Content-Disposition
+    const downloadUrl = `${backendUrl}/download-audio?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(item.name)}`
+    await downloadTrack({ id: item.id, name: item.name, url: downloadUrl })
+    setLibraryRefreshKey((k) => k + 1)
+    toast.success(`"${item.name}" saved to Offline Library!`, { icon: "⬇️", duration: 3000 })
+  }
+
+  // ── Toggle download permission (host only)
+  const toggleDownloadPermission = () => {
+    const next = !downloadAllowed
+    setDownloadAllowed(next)
+    socket.emit("download-permission", { roomCode, allowed: next })
+    toast(next ? "Downloads enabled for members" : "Downloads disabled for members", {
+      icon: next ? "✅" : "🔒",
+      duration: 3000,
+    })
+  }
+
   const formatTime = (time: number) => {
     if (isNaN(time)) return "0:00"
     const m = Math.floor(time / 60); const s = Math.floor(time % 60)
@@ -454,11 +495,24 @@ export default function SyncRoom() {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center">
+                  <div className="text-center relative">
                     <h2 className="text-xl font-bold truncate">{songName}</h2>
                     <p className="text-muted-foreground text-sm mt-1">
                       {audioSrc ? (queue.length > 0 ? `Track ${currentIndex + 1} of ${queue.length} in queue` : "Ready to play") : "No song loaded — add songs to queue below"}
                     </p>
+                    {/* Download current track (members only, when downloads allowed) */}
+                    {!isHost && audioSrc && downloadAllowed && currentIndex >= 0 && queue[currentIndex] && (
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <DownloadButton
+                          state={downloads[queue[currentIndex].id]}
+                          onDownload={() => handleDownloadTrack(queue[currentIndex])}
+                          onReset={() => resetTrack(queue[currentIndex].id)}
+                          size="sm"
+                          title="Download current track for offline listening"
+                        />
+                        <span className="text-xs text-muted-foreground">Download track</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -541,13 +595,45 @@ export default function SyncRoom() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+
+                    {/* Admin: Download permission toggle */}
+                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground font-medium">Allow member downloads</span>
+                      </div>
+                      <button
+                        onClick={toggleDownloadPermission}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-colors ${
+                          downloadAllowed
+                            ? "bg-primary/10 text-primary hover:bg-primary/20"
+                            : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                        }`}
+                        title={downloadAllowed ? "Click to disable member downloads" : "Click to enable member downloads"}
+                      >
+                        {downloadAllowed ? (
+                          <><ToggleRight className="h-4 w-4" /> On</>
+                        ) : (
+                          <><ToggleLeft className="h-4 w-4" /> Off</>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {!isHost && (
-                  <p className="text-xs text-center text-muted-foreground border-t pt-4">
-                    Only the room host can manage the queue.
-                  </p>
+                  <div className="border-t pt-4 space-y-1">
+                    <p className="text-xs text-center text-muted-foreground">
+                      Only the room host can manage the queue.
+                    </p>
+                    <div className={`flex items-center justify-center gap-1.5 text-xs font-medium ${downloadAllowed ? "text-primary" : "text-muted-foreground"}`}>
+                      {downloadAllowed ? (
+                        <><Download className="h-3 w-3" /> Downloads enabled</>
+                      ) : (
+                        <><HardDrive className="h-3 w-3" /> Downloads disabled by host</>
+                      )}
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -585,6 +671,31 @@ export default function SyncRoom() {
                       </span>
                     )}
                   </CardTitle>
+                  {/* Download All — members only, when downloads allowed and queue has items */}
+                  {!isHost && downloadAllowed && queue.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1.5 hover:text-primary hover:bg-primary/10"
+                      onClick={() => {
+                        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+                        downloadAll(
+                          queue.map((item) => ({
+                            id: item.id,
+                            name: item.name,
+                            url: `${backendUrl}/download-audio?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(item.name)}`,
+                          }))
+                        ).then(() => {
+                          setLibraryRefreshKey((k) => k + 1)
+                          toast.success("All tracks saved to Offline Library!", { icon: "⬇️", duration: 3000 })
+                        })
+                      }}
+                      title="Download all queue tracks for offline listening"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download All
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -641,6 +752,17 @@ export default function SyncRoom() {
                               title="Remove from queue" onClick={() => removeFromQueue(item.id, index)}>
                               <X className="h-3.5 w-3.5" />
                             </Button>
+                          </div>
+                        )}
+
+                        {/* Download button (members only, when downloads allowed) */}
+                        {!isHost && downloadAllowed && (
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <DownloadButton
+                              state={downloads[item.id]}
+                              onDownload={() => handleDownloadTrack(item)}
+                              onReset={() => resetTrack(item.id)}
+                            />
                           </div>
                         )}
                       </motion.div>
@@ -756,6 +878,12 @@ export default function SyncRoom() {
                 )}
               </AnimatePresence>
             </Card>
+
+            {/* Offline Library — visible to everyone (members listen offline, host can preview) */}
+            <OfflineLibraryPanel refreshKey={libraryRefreshKey} />
+
+            {/* Download History */}
+            <DownloadHistoryPanel refreshKey={libraryRefreshKey} />
 
             {/* Leave */}
             <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"

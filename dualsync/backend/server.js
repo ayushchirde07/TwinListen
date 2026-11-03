@@ -115,6 +115,51 @@ app.get("/youtube-stream", async (req, res) => {
   }
 });
 
+// ── Download proxy endpoint ────────────────────────────────────────────────────
+// Fetches any audio URL (uploaded file or YouTube stream) and serves it as a
+// downloadable attachment so the browser triggers a native Save dialog.
+// Query params: url (encoded), name (optional filename for the download)
+app.get("/download-audio", async (req, res) => {
+  try {
+    const rawUrl = decodeURIComponent(req.query.url || "");
+    const name = decodeURIComponent(req.query.name || "audio");
+    if (!rawUrl) return res.status(400).json({ error: "Missing url param" });
+
+    // For uploaded files served from our own /audio/ path, read from disk directly
+    const isLocal = rawUrl.includes("/audio/") && !rawUrl.includes("youtube");
+    if (isLocal) {
+      const filename = path.basename(rawUrl.split("?")[0]);
+      const filePath = path.join(__dirname, "public", "audio", filename);
+      if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found" });
+      const ext = path.extname(filename) || ".mp3";
+      const safeName = name.replace(/[^\w\s.-]/g, "_") + ext;
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+      return fs.createReadStream(filePath).pipe(res);
+    }
+
+    // For YouTube streams or external URLs, proxy-fetch and forward as attachment
+    const proxyRes = await fetch(rawUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!proxyRes.ok) return res.status(502).json({ error: "Could not fetch audio" });
+
+    const contentType = proxyRes.headers.get("content-type") || "audio/mpeg";
+    const ext = contentType.includes("webm") ? ".webm" : contentType.includes("mp4") ? ".m4a" : ".mp3";
+    const safeName = name.replace(/[^\w\s.-]/g, "_") + ext;
+
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+    if (proxyRes.headers.get("content-length"))
+      res.setHeader("Content-Length", proxyRes.headers.get("content-length"));
+
+    proxyRes.body.pipe(res);
+  } catch (err) {
+    console.error("Download proxy error:", err.message);
+    if (!res.headersSent) res.status(500).json({ error: "Download failed" });
+  }
+});
+
 
 const io = new Server(httpServer, {
   cors: {
@@ -159,6 +204,11 @@ io.on("connection", (socket) => {
   // Chat
   socket.on("chat-message", ({ roomCode, message }) =>
     io.to(roomCode).emit("chat-message", message)
+  );
+
+  // Download permissions — host broadcasts allow/deny to all members
+  socket.on("download-permission", ({ roomCode, allowed }) =>
+    socket.to(roomCode).emit("download-permission", { allowed })
   );
 
   // Cleanup on disconnect
