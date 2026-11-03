@@ -89,7 +89,7 @@ export default function SyncRoom() {
 
   // ── Activity / Notifications state
   const [activities, setActivities] = useState<ActivityEntry[]>([])
-  const [activityOpen, setActivityOpen] = useState(true)
+  const [activityOpen, setActivityOpen] = useState(false)
   const [unreadActivity, setUnreadActivity] = useState(0)
   const activityEndRef = useRef<HTMLDivElement>(null)
 
@@ -839,6 +839,80 @@ export default function SyncRoom() {
               </CardContent>
             </Card>
 
+            {/* Activity Feed / Notifications */}
+            <Card className="overflow-hidden border-primary/10">
+              <button
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
+                onClick={() => { setActivityOpen((o) => !o); setUnreadActivity(0) }}
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  <Bell className="h-4 w-4 text-primary" />
+                  Room Activity
+                  {unreadActivity > 0 && (
+                    <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center animate-bounce">
+                      {unreadActivity}
+                    </span>
+                  )}
+                </span>
+                <motion.span animate={{ rotate: activityOpen ? 180 : 0 }} transition={{ duration: 0.2 }}
+                  className="text-muted-foreground text-xs">▲</motion.span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {activityOpen && (
+                  <motion.div
+                    key="activity-body"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="h-52 overflow-y-auto px-3 py-2 space-y-1.5 border-t border-border bg-secondary/10">
+                      {activities.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
+                          <Bell className="h-7 w-7 opacity-20" />
+                          <p className="text-xs">No activity yet. Events will appear here.</p>
+                        </div>
+                      ) : (
+                        activities.map((entry) => {
+                          const iconMap: Record<ActivityType, React.ReactNode> = {
+                            join: <UserPlus className="h-3.5 w-3.5 text-emerald-500 shrink-0" />,
+                            leave: <UserMinus className="h-3.5 w-3.5 text-rose-400 shrink-0" />,
+                            song: <Disc3 className="h-3.5 w-3.5 text-primary shrink-0" />,
+                            queue: <ListMusic className="h-3.5 w-3.5 text-violet-400 shrink-0" />,
+                            download: <Download className="h-3.5 w-3.5 text-amber-400 shrink-0" />,
+                            info: <Bell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
+                          }
+                          return (
+                            <motion.div
+                              key={entry.id}
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              className="flex items-start gap-2 p-1.5 rounded-md hover:bg-secondary/50 transition-colors"
+                            >
+                              <div className="mt-0.5">{iconMap[entry.type]}</div>
+                              <div className="flex-grow min-w-0">
+                                <p className="text-xs text-foreground/80 leading-snug break-words">{entry.text}</p>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground shrink-0 font-mono mt-0.5">{entry.time}</span>
+                            </motion.div>
+                          )
+                        })
+                      )}
+                      <div ref={activityEndRef} />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Card>
+
+            {/* Offline Library — visible to everyone (members listen offline, host can preview) */}
+            <OfflineLibraryPanel refreshKey={libraryRefreshKey} />
+
+            {/* Download History */}
+            <DownloadHistoryPanel refreshKey={libraryRefreshKey} />
+
             {/* Chat */}
             <Card className="overflow-hidden">
               {/* Chat header — click to toggle */}
@@ -924,80 +998,6 @@ export default function SyncRoom() {
                 )}
               </AnimatePresence>
             </Card>
-
-            {/* Activity Feed / Notifications */}
-            <Card className="overflow-hidden border-primary/10">
-              <button
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-secondary/50 transition-colors"
-                onClick={() => { setActivityOpen((o) => !o); setUnreadActivity(0) }}
-              >
-                <span className="flex items-center gap-2 text-sm font-semibold">
-                  <Bell className="h-4 w-4 text-primary" />
-                  Room Activity
-                  {unreadActivity > 0 && (
-                    <span className="h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center animate-bounce">
-                      {unreadActivity}
-                    </span>
-                  )}
-                </span>
-                <motion.span animate={{ rotate: activityOpen ? 180 : 0 }} transition={{ duration: 0.2 }}
-                  className="text-muted-foreground text-xs">▲</motion.span>
-              </button>
-
-              <AnimatePresence initial={false}>
-                {activityOpen && (
-                  <motion.div
-                    key="activity-body"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className="h-52 overflow-y-auto px-3 py-2 space-y-1.5 border-t border-border bg-secondary/10">
-                      {activities.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
-                          <Bell className="h-7 w-7 opacity-20" />
-                          <p className="text-xs">No activity yet. Events will appear here.</p>
-                        </div>
-                      ) : (
-                        activities.map((entry) => {
-                          const iconMap: Record<ActivityType, React.ReactNode> = {
-                            join: <UserPlus className="h-3.5 w-3.5 text-emerald-500 shrink-0" />,
-                            leave: <UserMinus className="h-3.5 w-3.5 text-rose-400 shrink-0" />,
-                            song: <Disc3 className="h-3.5 w-3.5 text-primary shrink-0" />,
-                            queue: <ListMusic className="h-3.5 w-3.5 text-violet-400 shrink-0" />,
-                            download: <Download className="h-3.5 w-3.5 text-amber-400 shrink-0" />,
-                            info: <Bell className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
-                          }
-                          return (
-                            <motion.div
-                              key={entry.id}
-                              initial={{ opacity: 0, x: -8 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              className="flex items-start gap-2 p-1.5 rounded-md hover:bg-secondary/50 transition-colors"
-                            >
-                              <div className="mt-0.5">{iconMap[entry.type]}</div>
-                              <div className="flex-grow min-w-0">
-                                <p className="text-xs text-foreground/80 leading-snug break-words">{entry.text}</p>
-                              </div>
-                              <span className="text-[10px] text-muted-foreground shrink-0 font-mono mt-0.5">{entry.time}</span>
-                            </motion.div>
-                          )
-                        })
-                      )}
-                      <div ref={activityEndRef} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </Card>
-
-            {/* Offline Library — visible to everyone (members listen offline, host can preview) */}
-            <OfflineLibraryPanel refreshKey={libraryRefreshKey} />
-
-            {/* Download History */}
-            <DownloadHistoryPanel refreshKey={libraryRefreshKey} />
 
             {/* Leave */}
             <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
