@@ -100,7 +100,6 @@ export default function SyncRoom() {
 
   const audioRef = useRef<HTMLAudioElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const chatEndRef = useRef<HTMLDivElement>(null)
 
   // ── Add an activity entry
   const addActivity = useCallback((type: ActivityType, text: string) => {
@@ -255,13 +254,10 @@ export default function SyncRoom() {
     }
   }, [step, roomCode, addActivity])
 
-  // ── Auto-scroll chat to bottom when new message arrives
+  // ── Clear the unread badge when the chat is open; keep the user's scroll position.
   useEffect(() => {
-    if (chatOpen) {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
-      setUnread(0)
-    }
-  }, [messages, chatOpen])
+    if (chatOpen) setUnread(0)
+  }, [chatOpen])
 
   // ── Auto-scroll activity feed to bottom
   useEffect(() => {
@@ -908,7 +904,6 @@ export default function SyncRoom() {
                           )
                         })
                       )}
-                      <div ref={chatEndRef} />
                     </div>
 
                     {/* Input row */}
