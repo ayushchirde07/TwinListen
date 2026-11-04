@@ -510,14 +510,46 @@ export default function SyncRoom() {
                   </div>
                 </div>
               ) : (
-                <div className="h-44 bg-gradient-to-br from-primary/20 to-purple-900/40 flex items-center justify-center relative">
-                  {isPlaying ? (
-                    <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
-                      <Music className="h-18 w-18 text-primary/70" style={{ height: 72, width: 72 }} />
+                <div className="h-44 bg-[#10091b] flex items-center justify-center relative overflow-hidden isolate">
+                  {/* A shared soundstage that comes alive when the room is playing */}
+                  <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_50%_100%,rgba(139,92,246,0.34),transparent_58%),linear-gradient(115deg,rgba(42,17,67,0.9),rgba(14,10,26,0.96)_55%,rgba(33,13,54,0.9))]" />
+                  <div className="absolute inset-0 -z-10 opacity-[0.12] bg-[linear-gradient(rgba(255,255,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.14)_1px,transparent_1px)] bg-[size:34px_34px] [mask-image:linear-gradient(to_bottom,transparent,black)]" />
+                  <div className="absolute top-4 left-5 flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-violet-200/60">
+                    <span className={`h-1.5 w-1.5 rounded-full ${isPlaying ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" : "bg-violet-300/50"}`} />
+                    TwinListen <span className="text-violet-200/30">/</span> shared soundstage
+                  </div>
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <motion.div
+                      animate={isPlaying ? { scale: [1, 1.08, 1], opacity: [0.35, 0.65, 0.35] } : { scale: 1, opacity: 0.2 }}
+                      transition={{ duration: 2.4, repeat: isPlaying ? Infinity : 0, ease: "easeInOut" }}
+                      className="absolute -inset-7 rounded-full border border-violet-300/40"
+                    />
+                    <motion.div
+                      animate={isPlaying ? { scale: [1.08, 1.2, 1.08], opacity: [0.2, 0.4, 0.2] } : { scale: 1, opacity: 0.1 }}
+                      transition={{ duration: 2.4, repeat: isPlaying ? Infinity : 0, ease: "easeInOut", delay: 0.35 }}
+                      className="absolute -inset-12 rounded-full border border-violet-300/30"
+                    />
+                    <motion.div
+                      animate={isPlaying ? { rotate: 360 } : { rotate: 0 }}
+                      transition={{ duration: 12, repeat: isPlaying ? Infinity : 0, ease: "linear" }}
+                      className="relative h-[76px] w-[76px] rounded-full border border-white/15 shadow-[0_0_45px_rgba(139,92,246,0.35)]"
+                      style={{ background: "repeating-radial-gradient(circle at center, #21132f 0px, #21132f 5px, #302044 6px, #21132f 7px)" }}
+                    >
+                      <div className="absolute inset-[27px] rounded-full bg-gradient-to-br from-fuchsia-300 to-violet-500 shadow-[0_0_18px_rgba(196,132,252,0.7)] flex items-center justify-center">
+                        <Music className="h-3.5 w-3.5 text-[#241238]" />
+                      </div>
                     </motion.div>
-                  ) : (
-                    <Music className="text-primary/30" style={{ height: 72, width: 72 }} />
-                  )}
+                  </div>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex h-7 items-center gap-[3px] opacity-80" aria-hidden="true">
+                    {Array.from({ length: 37 }, (_, i) => (
+                      <motion.span
+                        key={i}
+                        className="w-[2px] rounded-full bg-gradient-to-t from-violet-500/30 via-violet-300 to-fuchsia-200"
+                        animate={isPlaying ? { height: [5 + (i % 3) * 2, 10 + ((i * 7) % 17), 5 + (i % 3) * 2], opacity: [0.45, 1, 0.45] } : { height: 3 + ((i * 5) % 8), opacity: 0.35 }}
+                        transition={{ duration: 0.85 + (i % 5) * 0.12, repeat: isPlaying ? Infinity : 0, ease: "easeInOut", delay: (i % 9) * 0.06 }}
+                      />
+                    ))}
+                  </div>
                   {/* Now playing badge */}
                   {audioSrc && (
                     <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full text-xs text-white">
